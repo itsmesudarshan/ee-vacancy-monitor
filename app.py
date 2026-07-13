@@ -21,7 +21,18 @@ import os
 import json
 import base64
 import hashlib
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+NEPAL_TZ = ZoneInfo("Asia/Kathmandu")
+
+
+def today_nepal():
+    """Current date in Nepal time (UTC+5:45) — server runs in UTC on Render,
+    so comparisons must use this instead of datetime.now().date() to avoid
+    off-by-one errors near midnight."""
+    return datetime.now(NEPAL_TZ).date()
 from urllib.parse import urljoin
 
 import requests
@@ -87,6 +98,122 @@ def matches_keywords(text: str, keywords: list) -> bool:
     return any(kw.lower() in text_lower for kw in keywords)
 
 
+MONTH_MAP = {m: i for i, m in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], start=1)}
+
+
+def extract_posting_date(title: str):
+    """
+    Best-effort extraction of a publish date embedded in listing titles.
+    Handles patterns seen on collegenp.com etc:
+      - suffix ISO date:      "...Vacancy2025-12-01"  -> 2025-12-01
+      - prefix DDMonYYYY:     "01Dec2025Tamor..."     -> 2025-12-01
+    Returns a datetime.date, or None if no recognizable date found
+    (in which case the item is kept — we only filter out things we're
+    confident are old, not things we're unsure about).
+    """
+    # suffix ISO: YYYY-MM-DD at the very end of the string
+    m = re.search(r"(\d{4})-(\d{2})-(\d{2})\s*$", title)
+    if m:
+        try:
+            return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).date()
+        except ValueError:
+            pass
+
+    # prefix DDMonYYYY at the very start of the string
+    m = re.match(r"^(\d{2})(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\d{4})", title)
+    if m:
+        day, mon, year = int(m.group(1)), MONTH_MAP[m.group(2)], int(m.group(3))
+        try:
+            return datetime(year, mon, day).date()
+        except ValueError:
+            pass
+
+    return None
+
+
+FULL_MONTH_MAP = {name: i for i, name in enumerate(
+    ["January", "February", "March", "April", "May", "June",
+     "July", "August", "September", "October", "November", "December"], start=1)}
+
+DEADLINE_KEYWORDS = [
+    "application deadline", "last date", "closing date", "apply before",
+    "deadline", "last day to apply", "vacancy closes", "application closes",
+]
+
+
+def _try_parse_date_token(token: str):
+    token = token.strip().strip(".,")
+    # YYYY-MM-DD
+    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", token)
+    if m:
+        try:
+            return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).date()
+        except ValueError:
+            return None
+    # DD/MM/YYYY or DD-MM-YYYY
+    m = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$", token)
+    if m:
+        day, mon, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            return datetime(year, mon, day).date()
+        except ValueError:
+            return None
+    # "15 January 2026" or "January 15, 2026"
+    m = re.match(r"^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$", token)
+    if m and m.group(2) in FULL_MONTH_MAP:
+        try:
+            return datetime(int(m.group(3)), FULL_MONTH_MAP[m.group(2)], int(m.group(1))).date()
+        except ValueError:
+            return None
+    m = re.match(r"^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$", token)
+    if m and m.group(1) in FULL_MONTH_MAP:
+        try:
+            return datetime(int(m.group(3)), FULL_MONTH_MAP[m.group(1)], int(m.group(2))).date()
+        except ValueError:
+            return None
+    return None
+
+
+def extract_deadline_from_page(html_text: str):
+    """
+    Best-effort: find a deadline-style keyword, then look for a date token
+    within the following ~80 characters. Returns a date or None if no
+    deadline could be confidently found (caller keeps the item in that case
+    — we only filter out vacancies we're SURE have expired).
+    """
+    text = re.sub(r"\s+", " ", html_text)
+    text_lower = text.lower()
+
+    date_token_pattern = re.compile(
+        r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|"
+        r"\d{1,2}\s+[A-Za-z]+\s+\d{4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4})"
+    )
+
+    for kw in DEADLINE_KEYWORDS:
+        idx = text_lower.find(kw)
+        if idx == -1:
+            continue
+        window = text[idx: idx + len(kw) + 80]
+        m = date_token_pattern.search(window)
+        if m:
+            parsed = _try_parse_date_token(m.group(1))
+            if parsed:
+                return parsed
+    return None
+
+
+def fetch_deadline(url: str):
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        print(f"  Could not fetch detail page for deadline check ({url}): {e}")
+        return None
+    soup = BeautifulSoup(resp.text, "html.parser")
+    return extract_deadline_from_page(soup.get_text(" "))
+
+
 def vacancy_id(source_name: str, title: str, link: str) -> str:
     raw = f"{source_name}|{title.strip().lower()}|{link.strip().lower()}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -103,6 +230,8 @@ def fetch_source(source: dict) -> list:
 
     soup = BeautifulSoup(resp.text, "html.parser")
     link_selector = source.get("link_selector", "a")
+    max_age_days = source.get("max_age_days", 45)
+    cutoff = today_nepal() - timedelta(days=max_age_days)
 
     for a in soup.select(link_selector):
         title = a.get_text(strip=True)
@@ -111,9 +240,20 @@ def fetch_source(source: dict) -> list:
             continue
         if not matches_keywords(title, source["keywords"]):
             continue
+
+        posting_date = extract_posting_date(title)
+        if posting_date is not None and posting_date < cutoff:
+            continue  # too old, skip — confident it's a backlog listing
+
         if href.startswith("/"):
             href = urljoin(source["url"], href)
-        results.append({"organization": source["name"], "title": title, "link": href, "source_url": source["url"]})
+        results.append({
+            "organization": source["name"],
+            "title": title,
+            "link": href,
+            "source_url": source["url"],
+            "posting_date": posting_date.isoformat() if posting_date else None,
+        })
 
     unique = {}
     for r in results:
@@ -133,6 +273,7 @@ def send_email(new_items: list):
         body_lines.append(
             f"Organization: {item['organization']}\n"
             f"Position: {item['title']}\n"
+            f"Deadline: {item.get('deadline', 'Not specified')}\n"
             f"Link: {item['link']}\n"
             f"Notice page: {item['source_url']}\n"
             f"{'-' * 40}"
@@ -168,14 +309,27 @@ def run_check() -> dict:
         per_source_counts[source["name"]] = len(found)
         for item in found:
             vid = vacancy_id(source["name"], item["title"], item["link"])
-            if vid not in seen:
-                seen[vid] = {
-                    "title": item["title"],
-                    "link": item["link"],
-                    "organization": item["organization"],
-                    "first_seen": datetime.now().isoformat(timespec="seconds"),
-                }
-                new_items.append(item)
+            if vid in seen:
+                continue
+
+            # Only now, for genuinely new candidates, fetch the detail page
+            # to check if the deadline has already passed. Keeps the item
+            # if no deadline could be confidently determined.
+            deadline = fetch_deadline(item["link"])
+            item["deadline"] = deadline.isoformat() if deadline else "Not specified"
+
+            seen[vid] = {
+                "title": item["title"],
+                "link": item["link"],
+                "organization": item["organization"],
+                "first_seen": datetime.now().isoformat(timespec="seconds"),
+                "deadline": item["deadline"],
+            }
+
+            if deadline is not None and deadline < today_nepal():
+                continue  # expired — mark as seen (above) but don't alert
+
+            new_items.append(item)
 
     if new_items:
         send_email(new_items)
