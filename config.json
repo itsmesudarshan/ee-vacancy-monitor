@@ -1,0 +1,37 @@
+{
+  "sources": [
+    {
+      "name": "merojob - Electrical Engineer search",
+      "url": "https://merojob.com/search/?q=electrical+engineer",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "scada"]
+    },
+    {
+      "name": "kumarijob - Hydropower & Infrastructure",
+      "url": "https://www.kumarijob.com/jobs-in-nepal/hydropower-infrastructure-engineer",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission", "distribution engineer",
+                   "hydropower engineer", "protection engineer"]
+    },
+    {
+      "name": "collegenp - Hydropower Jobs tag",
+      "url": "https://www.collegenp.com/tag/hydropower-jobs",
+      "keywords": ["electrical engineer", "electrical overseer", "power engineer",
+                   "substation", "transmission", "distribution engineer"]
+    },
+    {
+      "name": "Nepal Electricity Authority - Notices",
+      "url": "https://www.nea.org.np/notices",
+      "keywords": ["electrical engineer", "vacancy", "electrical & electronics"]
+    }
+  ],
+  "smtp": {
+    "enabled": false,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "from_addr": "your_gmail_address@gmail.com",
+    "app_password": "your_16_char_app_password",
+    "to_addr": "your_gmail_address@gmail.com"
+  }
+}
