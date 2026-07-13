@@ -25,13 +25,5 @@
       "url": "https://www.nea.org.np/notices",
       "keywords": ["electrical engineer", "vacancy", "electrical & electronics"]
     }
-  ],
-  "smtp": {
-    "enabled": false,
-    "smtp_host": "smtp.gmail.com",
-    "smtp_port": 587,
-    "from_addr": "your_gmail_address@gmail.com",
-    "app_password": "your_16_char_app_password",
-    "to_addr": "your_gmail_address@gmail.com"
-  }
+  ]
 }
