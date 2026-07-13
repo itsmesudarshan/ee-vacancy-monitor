@@ -21,10 +21,6 @@ import os
 import json
 import base64
 import hashlib
-import smtplib
-import ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -125,14 +121,14 @@ def fetch_source(source: dict) -> list:
     return list(unique.values())
 
 
-# ---------- Email ----------
+# ---------- Email (via Resend HTTPS API — Render free tier blocks raw SMTP ports) ----------
 
 def send_email(new_items: list):
-    from_addr = os.environ["GMAIL_ADDRESS"]
-    app_password = os.environ["GMAIL_APP_PASSWORD"]
+    to_addr = os.environ["GMAIL_ADDRESS"]
+    api_key = os.environ["RESEND_API_KEY"]
 
     subject = f"🚨 {len(new_items)} New Electrical Engineering Vacancy(ies) in Nepal"
-    body_lines = ["New Electrical Engineering Vacancies Detected\n"]
+    body_lines = ["New Electrical Engineering Vacancies Detected", ""]
     for item in new_items:
         body_lines.append(
             f"Organization: {item['organization']}\n"
@@ -141,19 +137,22 @@ def send_email(new_items: list):
             f"Notice page: {item['source_url']}\n"
             f"{'-' * 40}"
         )
-    body = "\n\n".join(body_lines)
+    body_text = "\n\n".join(body_lines)
+    body_html = "<br><br>".join(line.replace("\n", "<br>") for line in body_lines)
 
-    msg = MIMEMultipart()
-    msg["From"] = from_addr
-    msg["To"] = from_addr
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls(context=context)
-        server.login(from_addr, app_password)
-        server.sendmail(from_addr, from_addr, msg.as_string())
+    resp = requests.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "from": "EE Vacancy Monitor <onboarding@resend.dev>",
+            "to": [to_addr],
+            "subject": subject,
+            "text": body_text,
+            "html": body_html,
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
 
 
 # ---------- Core run ----------
