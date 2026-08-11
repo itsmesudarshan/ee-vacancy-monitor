@@ -94,8 +94,22 @@ def load_config():
 # ---------- Scraping ----------
 
 def matches_keywords(text: str, keywords: list) -> bool:
+    """
+    A title matches a keyword phrase if ALL of that phrase's significant
+    words appear somewhere in the title (in any order, anywhere).
+    This catches real-world titles like "Electrical/Industrial/Mechatronics
+    Engineer" or "Electrical Design Engineer" that don't contain the exact
+    keyword phrase as a contiguous substring, while still requiring every
+    meaningful word to be present so we don't over-match.
+    """
     text_lower = text.lower()
-    return any(kw.lower() in text_lower for kw in keywords)
+    text_words = set(re.findall(r"[a-z0-9&]+", text_lower))
+
+    for kw in keywords:
+        kw_words = [w for w in re.findall(r"[a-z0-9&]+", kw.lower()) if len(w) > 2 or w == "&"]
+        if kw_words and all(w in text_words for w in kw_words):
+            return True
+    return False
 
 
 MONTH_MAP = {m: i for i, m in enumerate(
@@ -395,4 +409,3 @@ def trigger():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-  
