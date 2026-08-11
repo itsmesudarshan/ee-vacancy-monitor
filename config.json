@@ -1,13 +1,13 @@
 {
   "sources": [
     {
-      "name": "jobsnepal - Engineering Electrical category",
-      "url": "https://www.jobsnepal.com/category/engineering-electrical",
+      "name": "jobsnepal - search",
+      "url": "https://www.jobsnepal.com/search?q=Electrical+",
       "render_js": false,
       "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
                    "substation", "transmission engineer", "distribution engineer",
                    "hydropower engineer", "protection engineer", "electrical design",
-                   "control engineer", "scada"]
+                   "control engineer", "scada", "electrical"]
     },
     {
       "name": "ramrojob - Engineering category",
@@ -15,7 +15,7 @@
       "render_js": false,
       "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
                    "substation", "transmission engineer", "distribution engineer",
-                   "hydropower engineer", "protection engineer", "scada"]
+                   "hydropower engineer", "protection engineer", "scada","electrical"]
     }
   ]
 }
