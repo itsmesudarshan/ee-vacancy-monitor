@@ -203,14 +203,43 @@ def extract_deadline_from_page(html_text: str):
     return None
 
 
-def fetch_deadline(url: str):
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=15)
+def fetch_page(url: str, timeout: int = 25, render_js: bool = False) -> str:
+    """
+    Fetch a page's HTML via ScrapingBee, so requests appear to come from a
+    real browser/residential IP instead of Render's cloud IP range (which
+    several Nepali job sites block/serve blank pages to).
+    render_js=True costs ~5x more credits — only enable it for sites
+    confirmed to need JS rendering; plain server-rendered sites should
+    leave it off to conserve the free credit allowance.
+    Falls back to a direct request only if SCRAPINGBEE_API_KEY isn't set,
+    so local testing without the key still works (just may get blocked).
+    """
+    api_key = os.environ.get("SCRAPINGBEE_API_KEY")
+    if not api_key:
+        resp = requests.get(url, headers=HEADERS, timeout=timeout)
         resp.raise_for_status()
+        return resp.text
+
+    resp = requests.get(
+        "https://app.scrapingbee.com/api/v1/",
+        params={
+            "api_key": api_key,
+            "url": url,
+            "render_js": "true" if render_js else "false",
+        },
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    return resp.text
+
+
+def fetch_deadline(url: str, render_js: bool = False):
+    try:
+        html_text = fetch_page(url, timeout=25, render_js=render_js)
     except requests.RequestException as e:
         print(f"  Could not fetch detail page for deadline check ({url}): {e}")
         return None
-    soup = BeautifulSoup(resp.text, "html.parser")
+    soup = BeautifulSoup(html_text, "html.parser")
     return extract_deadline_from_page(soup.get_text(" "))
 
 
@@ -222,13 +251,12 @@ def vacancy_id(source_name: str, title: str, link: str) -> str:
 def fetch_source(source: dict) -> list:
     results = []
     try:
-        resp = requests.get(source["url"], headers=HEADERS, timeout=20)
-        resp.raise_for_status()
+        html_text = fetch_page(source["url"], timeout=30, render_js=source.get("render_js", False))
     except requests.RequestException as e:
         print(f"ERROR fetching {source['name']}: {e}")
         return results
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    soup = BeautifulSoup(html_text, "html.parser")
     link_selector = source.get("link_selector", "a")
     max_age_days = source.get("max_age_days", 45)
     cutoff = today_nepal() - timedelta(days=max_age_days)
@@ -315,7 +343,7 @@ def run_check() -> dict:
             # Only now, for genuinely new candidates, fetch the detail page
             # to check if the deadline has already passed. Keeps the item
             # if no deadline could be confidently determined.
-            deadline = fetch_deadline(item["link"])
+            deadline = fetch_deadline(item["link"], render_js=source.get("render_js", False))
             item["deadline"] = deadline.isoformat() if deadline else "Not specified"
 
             seen[vid] = {
