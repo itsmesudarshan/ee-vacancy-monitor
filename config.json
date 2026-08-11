@@ -4,26 +4,77 @@
       "name": "merojob - Electrical Engineer search",
       "url": "https://merojob.com/search/?q=electrical+engineer",
       "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
-                   "substation", "transmission engineer", "distribution engineer",
+                   "electrical", "transmission engineer", "distribution engineer",
                    "hydropower engineer", "protection engineer", "scada"]
     },
     {
       "name": "kumarijob - Hydropower & Infrastructure",
       "url": "https://www.kumarijob.com/jobs-in-nepal/hydropower-infrastructure-engineer",
       "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
-                   "substation", "transmission", "distribution engineer",
+                   "electrical", "transmission", "distribution engineer",
                    "hydropower engineer", "protection engineer"]
     },
     {
       "name": "collegenp - Hydropower Jobs tag",
       "url": "https://www.collegenp.com/tag/hydropower-jobs",
       "keywords": ["electrical engineer", "electrical overseer", "power engineer",
-                   "substation", "transmission", "distribution engineer"]
+                   "electrical", "transmission", "distribution engineer"],
+      "max_age_days": 45
     },
     {
       "name": "Nepal Electricity Authority - Notices",
       "url": "https://www.nea.org.np/notices",
-      "keywords": ["electrical engineer", "vacancy", "electrical & electronics"]
+      "keywords": ["electrical engineer", "vacancy", "electrical", "electrical & electronics"]
+    },
+    {
+      "name": "jobsnepal - Engineering Electrical category",
+      "url": "https://www.jobsnepal.com/category/engineering-electrical",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "electrical design",
+                   "control engineer", "scada","electrical"]
+    },
+    {
+      "name": "ramrojob - Engineering category",
+      "url": "https://www.ramrojob.com/category/engineering",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "scada","electrical"]
+    },
+    {
+      "name": "froxjob - job search",
+      "url": "https://froxjob.com/job?q=electrical+engineer",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "scada","electrical"]
+    },
+    {
+      "name": "allnepaljob - search",
+      "url": "https://allnepaljob.com/search?q=electrical+engineer",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "scada","electrical"]
+    },
+    {
+      "name": "rollingnexus - search",
+      "url": "https://rollingnexus.com/jobs?search=electrical+engineer",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "scada","electrical"]
+    },
+    {
+      "name": "jobejee - search",
+      "url": "https://jobejee.com/search?q=electrical+engineer",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "scada","electrical"]
+    },
+    {
+      "name": "kantipurjob - search",
+      "url": "https://kantipurjob.com/searchjob?keyword=electrical+engineer",
+      "keywords": ["electrical engineer", "electrical & electronics", "power engineer",
+                   "substation", "transmission engineer", "distribution engineer",
+                   "hydropower engineer", "protection engineer", "scada","electrical"]
     }
   ]
 }
