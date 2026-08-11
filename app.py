@@ -379,7 +379,7 @@ def run_check() -> dict:
     seen, sha = load_seen()
     new_items = []
     per_source_counts = {}
-    DESCRIPTION_SCAN_CAP = 15  # per source, per run — caps ScrapingBee credit usage
+    DESCRIPTION_SCAN_CAP = 8  # per source, per run — caps ScrapingBee credit usage across 11 sources
 
     for source in config["sources"]:
         candidates = fetch_source_candidates(source)
