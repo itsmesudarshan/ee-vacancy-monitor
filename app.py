@@ -263,7 +263,35 @@ def vacancy_id(source_name: str, title: str, link: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def fetch_source(source: dict) -> list:
+NAV_LINK_BLOCKLIST = {
+    "about us", "contact us", "log in", "sign up", "register", "faq",
+    "top jobs", "hot jobs", "normal jobs", "instant jobs", "premium jobs",
+    "search job", "find job", "home", "blog", "advertise", "privacy policy",
+    "terms of service", "see more jobs by categories", "see more jobs by cities",
+    "see more jobs by types",
+}
+
+
+def looks_like_job_link(title: str, href: str) -> bool:
+    """Basic heuristic to exclude nav/footer/category links from candidates."""
+    if not title or not href or len(title) < 8:
+        return False
+    if title.strip().lower() in NAV_LINK_BLOCKLIST:
+        return False
+    if href.strip() == "#":
+        return False
+    bad_path_markers = ("/category/", "/employer/", "/job-type/", "/city/",
+                         "/search", "/register", "/login", "/about-us",
+                         "/contact-us", "/services/", "/articles", "/faq")
+    if any(marker in href.lower() for marker in bad_path_markers):
+        return False
+    return True
+
+
+def fetch_source_candidates(source: dict) -> list:
+    """Fetch a listing page and return ALL plausible job links (unfiltered by
+    keyword), so callers can decide whether to check title-only or also scan
+    each candidate's description page."""
     results = []
     try:
         html_text = fetch_page(source["url"], timeout=30, render_js=source.get("render_js", False))
@@ -273,21 +301,12 @@ def fetch_source(source: dict) -> list:
 
     soup = BeautifulSoup(html_text, "html.parser")
     link_selector = source.get("link_selector", "a")
-    max_age_days = source.get("max_age_days", 45)
-    cutoff = today_nepal() - timedelta(days=max_age_days)
 
     for a in soup.select(link_selector):
         title = a.get_text(strip=True)
         href = a.get("href")
-        if not title or not href or len(title) < 8:
+        if not looks_like_job_link(title, href):
             continue
-        if not matches_keywords(title, source["keywords"]):
-            continue
-
-        posting_date = extract_posting_date(title)
-        if posting_date is not None and posting_date < cutoff:
-            continue  # too old, skip — confident it's a backlog listing
-
         if href.startswith("/"):
             href = urljoin(source["url"], href)
         results.append({
@@ -295,13 +314,27 @@ def fetch_source(source: dict) -> list:
             "title": title,
             "link": href,
             "source_url": source["url"],
-            "posting_date": posting_date.isoformat() if posting_date else None,
         })
 
     unique = {}
     for r in results:
         unique[r["link"]] = r
     return list(unique.values())
+
+
+def description_matches(url: str, keywords: list, render_js: bool = False) -> bool:
+    """Fetch a job's detail page and check if its body text matches keywords,
+    for listings whose title alone didn't match (catches cases like
+    'Industrial/Project Engineer' whose description mentions 'Electrical').
+    """
+    try:
+        html_text = fetch_page(url, timeout=25, render_js=render_js)
+    except requests.RequestException as e:
+        print(f"  Could not fetch detail page for description scan ({url}): {e}")
+        return False
+    soup = BeautifulSoup(html_text, "html.parser")
+    body_text = soup.get_text(" ")
+    return matches_keywords(body_text, keywords)
 
 
 # ---------- Email (via Resend HTTPS API — Render free tier blocks raw SMTP ports) ----------
@@ -346,11 +379,44 @@ def run_check() -> dict:
     seen, sha = load_seen()
     new_items = []
     per_source_counts = {}
+    DESCRIPTION_SCAN_CAP = 15  # per source, per run — caps ScrapingBee credit usage
 
     for source in config["sources"]:
-        found = fetch_source(source)
-        per_source_counts[source["name"]] = len(found)
-        for item in found:
+        candidates = fetch_source_candidates(source)
+        keywords = source["keywords"]
+        render_js = source.get("render_js", False)
+        max_age_days = source.get("max_age_days", 45)
+        cutoff = today_nepal() - timedelta(days=max_age_days)
+
+        matched = []
+        description_scan_budget = DESCRIPTION_SCAN_CAP
+
+        for item in candidates:
+            vid = vacancy_id(source["name"], item["title"], item["link"])
+            already_seen = vid in seen
+
+            title_match = matches_keywords(item["title"], keywords)
+            desc_match = False
+
+            if not title_match and not already_seen and description_scan_budget > 0:
+                # Cheap title check failed — spend one of our limited
+                # description-scan fetches on this NEW candidate only.
+                desc_match = description_matches(item["link"], keywords, render_js=render_js)
+                description_scan_budget -= 1
+
+            if not (title_match or desc_match):
+                continue
+
+            posting_date = extract_posting_date(item["title"])
+            if posting_date is not None and posting_date < cutoff:
+                continue  # too old, skip — confident it's a backlog listing
+            item["posting_date"] = posting_date.isoformat() if posting_date else None
+            item["matched_via"] = "title" if title_match else "description"
+            matched.append(item)
+
+        per_source_counts[source["name"]] = len(matched)
+
+        for item in matched:
             vid = vacancy_id(source["name"], item["title"], item["link"])
             if vid in seen:
                 continue
@@ -358,7 +424,7 @@ def run_check() -> dict:
             # Only now, for genuinely new candidates, fetch the detail page
             # to check if the deadline has already passed. Keeps the item
             # if no deadline could be confidently determined.
-            deadline = fetch_deadline(item["link"], render_js=source.get("render_js", False))
+            deadline = fetch_deadline(item["link"], render_js=render_js)
             item["deadline"] = deadline.isoformat() if deadline else "Not specified"
 
             seen[vid] = {
