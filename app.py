@@ -208,9 +208,9 @@ def fetch_page(url: str, timeout: int = 25, render_js: bool = False) -> str:
     Fetch a page's HTML via ScrapingBee, so requests appear to come from a
     real browser/residential IP instead of Render's cloud IP range (which
     several Nepali job sites block/serve blank pages to).
-    render_js=True costs ~5x more credits — only enable it for sites
-    confirmed to need JS rendering; plain server-rendered sites should
-    leave it off to conserve the free credit allowance.
+    We deliberately do NOT send render_js: some ScrapingBee accounts default
+    to "Auto-Mode", which picks the cheapest working config automatically —
+    and explicitly sending render_js alongside Auto-Mode causes a 400 error.
     Falls back to a direct request only if SCRAPINGBEE_API_KEY isn't set,
     so local testing without the key still works (just may get blocked).
     """
@@ -225,10 +225,11 @@ def fetch_page(url: str, timeout: int = 25, render_js: bool = False) -> str:
         params={
             "api_key": api_key,
             "url": url,
-            "render_js": "true" if render_js else "false",
         },
         timeout=timeout,
     )
+    if resp.status_code != 200:
+        print(f"  ScrapingBee error {resp.status_code} for {url}: {resp.text[:500]}")
     resp.raise_for_status()
     return resp.text
 
@@ -394,3 +395,4 @@ def trigger():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+  
