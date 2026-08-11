@@ -1,20 +1,69 @@
 {
   "sources": [
     {
-      "name": "jobsnepal - Engineering Electrical category",
-      "url": "https://www.jobsnepal.com/category/engineering-electrical",
-      "render_js": false,
-      "keywords": ["electrical"]
-    },
-    {
-      "name": "jobsnepal - Engineering General category",
-      "url": "https://www.jobsnepal.com/category/engineering-jobs",
+      "name": "jobsnepal - Normal Jobs (all categories)",
+      "url": "https://www.jobsnepal.com/normal-job",
       "render_js": false,
       "keywords": ["electrical"]
     },
     {
       "name": "ramrojob - Engineering category",
       "url": "https://www.ramrojob.com/category/engineering",
+      "render_js": false,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "merojob - Electrical Engineer search",
+      "url": "https://merojob.com/search/?q=electrical+engineer",
+      "render_js": true,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "kumarijob - Hydropower & Infrastructure",
+      "url": "https://www.kumarijob.com/jobs-in-nepal/hydropower-infrastructure-engineer",
+      "render_js": true,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "collegenp - Hydropower Jobs tag",
+      "url": "https://www.collegenp.com/tag/hydropower-jobs",
+      "render_js": false,
+      "max_age_days": 45,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "Nepal Electricity Authority - Notices",
+      "url": "https://www.nea.org.np/notices",
+      "render_js": false,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "kantipurjob - search",
+      "url": "https://kantipurjob.com/searchjob?keyword=electrical+engineer",
+      "render_js": false,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "froxjob - job search",
+      "url": "https://froxjob.com/job?q=electrical+engineer",
+      "render_js": false,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "allnepaljob - search",
+      "url": "https://allnepaljob.com/search?q=electrical+engineer",
+      "render_js": false,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "rollingnexus - search",
+      "url": "https://rollingnexus.com/jobs?search=electrical+engineer",
+      "render_js": false,
+      "keywords": ["electrical"]
+    },
+    {
+      "name": "jobejee - search",
+      "url": "https://jobejee.com/search?q=electrical+engineer",
       "render_js": false,
       "keywords": ["electrical"]
     }
